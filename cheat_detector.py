@@ -1,6 +1,7 @@
 import cv2
 import os
 import numpy as np
+import time
 
 def extract_frames(video_path, output_folder):
     
@@ -106,6 +107,66 @@ def detect_speed_cheat(video_path, threshold=2.0):
 
     print("No speed cheat detected.")
 
+def detect_splicing(video_path, threshold=50, var_threshold=1000, skew_threshold=1, kurt_threshold=3):
+    
+    cap = cv2.VideoCapture(video_path)
+    
+    if not cap.isOpened():
+        print(f"Error: Could not open video file {video_path}")
+        return
+
+    ret, frame1 = cap.read()
+    if not ret:
+        print("Error: Could not read the first frame of the video")
+        return
+
+    prev_gray = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+    frame_count = 0
+    splicing_detected = False
+    
+    # Loop over the frames in the video
+    while cap.isOpened():
+        
+        # Read the frame
+        ret, frame2 = cap.read()
+        if not ret:
+            break
+        
+        # Get the FPS
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        gray = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+        frame_diff = cv2.absdiff(prev_gray, gray)
+        
+        # Calculate the mean of absolute differences
+        mean_diff = np.mean(frame_diff)
+        
+        frame_count += 1
+        
+        #print(f"Frame {frame_count}: Mean difference = {mean_diff}")
+        
+        # Check if the mean difference is greater than the threshold
+        if mean_diff > threshold:
+            
+            # Get the timestamp in the video
+            timestamp = frame_count / fps
+            minutes = int(timestamp // 60)
+            seconds = timestamp % 60
+
+            print(f"Splicing detected at timestamp: {minutes}m {seconds:.2f}s) (Frame {frame_count}).")
+            splicing_detected = True 
+        
+        prev_gray = gray
+    
+    cap.release()
+    
+    if not splicing_detected:
+        print("No splicing detected.")
+    else:
+        print("Potential splicing detected.")
+
 
 # Detect speed cheat in the video
-detect_speed_cheat('No Cheat - Doom Test 1.mp4')
+# detect_speed_cheat('Speedruns/No Cheat - Doom Test 1.mp4')
+
+detect_splicing('Speedruns/Cheated - Doom Splice 1.mp4')
